@@ -1,22 +1,24 @@
-name: CI
-
+name: deploy dockerized web app
 on:
   push:
     branches: [ main ]
-
 jobs:
-  build:
+  update:
     runs-on: ubuntu-latest
-
     steps:
-      - name: whoami
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          port: 22
-          script: |
-            cd hello-world || git clone https://github.com/alias-rahil/hello-world && cd hello-world
-            git pull 
-            docker-compose up -d --build
+      - uses: actions/checkout@v2
+      - name: Deploy
+        env:
+          PRIVATE_KEY: ${{ secrets.KEY }}
+          USER: ${{ secrets.USERNAME }}
+          IP: ${{ secrets.HOST }}
+        run: |
+          eval $(ssh-agent)
+          echo "$PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan $IP > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          ssh $USER@$IP "cd hello-world && \
+            git pull && \
+            docker-compose up -d --build"
